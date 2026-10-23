@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace EzPhp\Sms\Driver;
 
 use EzPhp\HttpClient\HttpClient;
+use EzPhp\HttpClient\HttpClientException;
 use EzPhp\Sms\SmsException;
 use EzPhp\Sms\SmsMessage;
 use EzPhp\Sms\SmsSenderInterface;
@@ -54,17 +55,21 @@ final class VonageDriver implements SmsSenderInterface
             throw new SmsException('Vonage requires a sender: set sms.from or pass one on the SmsMessage.');
         }
 
-        $response = $this->client
-            ->post(self::ENDPOINT)
-            ->withForm([
-                'api_key' => $this->apiKey,
-                'api_secret' => $this->apiSecret,
-                'from' => $from,
-                'to' => ltrim($to, '+'),
-                'text' => $message->body,
-                'type' => 'unicode',
-            ])
-            ->send();
+        try {
+            $response = $this->client
+                ->post(self::ENDPOINT)
+                ->withForm([
+                    'api_key' => $this->apiKey,
+                    'api_secret' => $this->apiSecret,
+                    'from' => $from,
+                    'to' => ltrim($to, '+'),
+                    'text' => $message->body,
+                    'type' => 'unicode',
+                ])
+                ->send();
+        } catch (HttpClientException $e) {
+            throw new SmsException(sprintf('Vonage request failed: %s', $e->getMessage()), 0, $e);
+        }
 
         if (!$response->ok()) {
             throw new SmsException(sprintf('Vonage rejected SMS (HTTP %d): %s', $response->status(), $response->body()));

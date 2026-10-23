@@ -277,7 +277,7 @@ SMS delivery behind one `SmsSenderInterface` — Twilio and Vonage drivers over
 src/
 ├── SmsSenderInterface.php   — driver contract: send(string $to, SmsMessage): void
 ├── SmsMessage.php           — readonly value object: body + optional sender override
-├── SmsException.php         — thrown on a missing sender, provider rejection or log write failure
+├── SmsException.php         — thrown on a missing sender, provider rejection, transport failure or log write failure
 ├── Sms.php                  — static façade (setSender / setResolver / resetSender / send)
 ├── SmsServiceProvider.php   — binds SmsSenderInterface from `sms.*` config, wires the façade
 └── Driver/
@@ -317,6 +317,7 @@ tests/
 
 ## Design Decisions and Constraints
 
+- **Every delivery failure is an `SmsException`.** The HTTP drivers catch `HttpClientException` (connection refused, timeout, DNS) and rethrow it as `SmsException` with the original as `previous`, so `SmsSenderInterface`'s single `@throws` holds and a caller (or a queued `SendSmsNotificationJob`) needs one `catch`.
 - **Façade holds the driver directly** — no `Pusher`-style orchestrator class. There is no
   multi-recipient method to orchestrate (YAGNI); `sendToMany()` can be added later without
   changing the driver contract.

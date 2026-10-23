@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace EzPhp\Sms\Driver;
 
 use EzPhp\HttpClient\HttpClient;
+use EzPhp\HttpClient\HttpClientException;
 use EzPhp\Sms\SmsException;
 use EzPhp\Sms\SmsMessage;
 use EzPhp\Sms\SmsSenderInterface;
@@ -52,15 +53,19 @@ final class TwilioDriver implements SmsSenderInterface
             throw new SmsException('Twilio requires a sender: set sms.from or pass one on the SmsMessage.');
         }
 
-        $response = $this->client
-            ->post(sprintf('%s/Accounts/%s/Messages.json', self::API_BASE, rawurlencode($this->accountSid)))
-            ->withHeaders(['authorization' => 'Basic ' . base64_encode($this->accountSid . ':' . $this->authToken)])
-            ->withForm([
-                'To' => $to,
-                'From' => $from,
-                'Body' => $message->body,
-            ])
-            ->send();
+        try {
+            $response = $this->client
+                ->post(sprintf('%s/Accounts/%s/Messages.json', self::API_BASE, rawurlencode($this->accountSid)))
+                ->withHeaders(['authorization' => 'Basic ' . base64_encode($this->accountSid . ':' . $this->authToken)])
+                ->withForm([
+                    'To' => $to,
+                    'From' => $from,
+                    'Body' => $message->body,
+                ])
+                ->send();
+        } catch (HttpClientException $e) {
+            throw new SmsException(sprintf('Twilio request failed: %s', $e->getMessage()), 0, $e);
+        }
 
         if (!$response->ok()) {
             /** @var mixed $decoded */

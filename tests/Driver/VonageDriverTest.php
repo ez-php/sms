@@ -6,6 +6,7 @@ namespace Tests\Sms\Driver;
 
 use EzPhp\HttpClient\FakeTransport;
 use EzPhp\HttpClient\HttpClient;
+use EzPhp\HttpClient\HttpClientException;
 use EzPhp\HttpClient\HttpResponse;
 use EzPhp\Sms\Driver\VonageDriver;
 use EzPhp\Sms\SmsException;
@@ -95,5 +96,20 @@ final class VonageDriverTest extends TestCase
         $this->expectExceptionMessage('Vonage requires a sender');
 
         $driver->send('+4366412345678', new SmsMessage('Hi'));
+    }
+
+    public function testTransportFailureIsWrappedInSmsException(): void
+    {
+        $failure = new HttpClientException('Connection timed out');
+        $transport = new FakeTransport(['https://rest.nexmo.com/*' => $failure]);
+        $driver = new VonageDriver(new HttpClient($transport), 'key', 'secret', 'EzPhp');
+
+        try {
+            $driver->send('+4366412345678', new SmsMessage('Hi'));
+            $this->fail('Expected SmsException.');
+        } catch (SmsException $e) {
+            $this->assertSame('Vonage request failed: Connection timed out', $e->getMessage());
+            $this->assertSame($failure, $e->getPrevious());
+        }
     }
 }

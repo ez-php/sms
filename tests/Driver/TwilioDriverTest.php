@@ -6,6 +6,7 @@ namespace Tests\Sms\Driver;
 
 use EzPhp\HttpClient\FakeTransport;
 use EzPhp\HttpClient\HttpClient;
+use EzPhp\HttpClient\HttpClientException;
 use EzPhp\HttpClient\HttpResponse;
 use EzPhp\Sms\Driver\TwilioDriver;
 use EzPhp\Sms\SmsException;
@@ -92,5 +93,20 @@ final class TwilioDriverTest extends TestCase
         }
 
         $this->assertSame([], $transport->getRecorded());
+    }
+
+    public function testTransportFailureIsWrappedInSmsException(): void
+    {
+        $failure = new HttpClientException('Connection timed out');
+        $transport = new FakeTransport(['https://api.twilio.com/*' => $failure]);
+        $driver = new TwilioDriver(new HttpClient($transport), 'AC123', 'secret', '+15550001111');
+
+        try {
+            $driver->send('+4366412345678', new SmsMessage('Hi'));
+            $this->fail('Expected SmsException.');
+        } catch (SmsException $e) {
+            $this->assertSame('Twilio request failed: Connection timed out', $e->getMessage());
+            $this->assertSame($failure, $e->getPrevious());
+        }
     }
 }
