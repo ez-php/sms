@@ -1,6 +1,6 @@
 {
   "name": "ez-php/sms",
-  "version": "2.6.4",
+  "version": "2.6.5",
   "description": "SMS delivery (Twilio, Vonage, Log, Null drivers) over ez-php/http-client",
   "type": "library",
   "license": "MIT",
